@@ -33,8 +33,3 @@ This project applies financial econometric models to analyze volatility dynamics
 - DCC-GARCH & copula dependence modelling
 - VaR estimation, backtesting & forecast evaluation
 - Model comparison (AIC, DM test, MSFE, diagnostics)
-
----
-
-## 👥 Authors
-Lorenzo Brontesi, Giuseppe De Santis, Geanina A. S. Hosszu, Benedetta Marchettini  
