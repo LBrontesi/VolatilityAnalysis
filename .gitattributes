@@ -1,0 +1,2 @@
+# Keep source CSV bytes (including CRLF) intact for reproducibility.
+data/*.csv -text whitespace=cr-at-eol

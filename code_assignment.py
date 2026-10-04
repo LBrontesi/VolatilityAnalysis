@@ -17,18 +17,37 @@ from arch import arch_model
 from scipy import optimize, signal, stats
 from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.nonparametric.smoothers_lowess import lowess
-from fDCC_LogLikelihood import fDCC_LogLikelihood, dcc_correlations
+from fDCC_LogLikelihood import fDCC_LogLikelihood, dcc_correlations, dcc_objective_gradient
+from matlab_initialization import AssignmentGARCH, AssignmentEGARCH
 
 
-def fit_model(r, kind="GARCH", distribution="normal", p=1, mean=False):
+def make_model(r, kind="GARCH", distribution="normal", p=1, mean=False):
     model = arch_model(np.asarray(r), mean="Constant" if mean else "Zero",
                        vol="EGARCH" if kind == "EGARCH" else "GARCH",
                        p=p, o=int(kind in ("GJR", "EGARCH")),
                        q=0 if kind == "ARCH" else 1, dist=distribution, rescale=False)
-    result = model.fit(disp="off", show_warning=False)
+    process = AssignmentEGARCH if kind == "EGARCH" else AssignmentGARCH
+    model.volatility = process(p=p, o=int(kind in ("GJR", "EGARCH")),
+                               q=0 if kind == "ARCH" else 1)
+    return model
+
+
+def fit_model(r, kind="GARCH", distribution="normal", p=1, mean=False):
+    model = make_model(r, kind, distribution, p, mean)
+    result = model.fit(disp="off", show_warning=False,
+                       options={"maxiter": 2000, "ftol": 1e-9})
     if result.convergence_flag:
         warnings.warn(f"{kind}/{distribution} optimizer did not converge")
     return result
+
+
+def matlab_moments(r):
+    values = np.asarray(r)
+    centered = values-values.mean(axis=0)
+    standardized = centered/values.std(axis=0, ddof=1)
+    return {"mean": values.mean(axis=0), "variance": np.mean(centered**2, axis=0),
+            "skewness": np.mean(standardized**3, axis=0),
+            "kurtosis": np.mean(standardized**4, axis=0)}
 
 
 def fgarch11t_fit(r):
@@ -36,7 +55,9 @@ def fgarch11t_fit(r):
     return result, np.asarray(result.std_resid), np.asarray(result.conditional_volatility)
 
 
-def load_prices(paths, start_row=1307, end_row=6244):
+def load_prices(paths, start_row=1307, end_row=6244, alignment="dates"):
+    if alignment not in ("dates", "rows"):
+        raise ValueError("alignment must be dates or rows")
     series = []
     for path in paths:
         table = pd.read_csv(path)
@@ -52,8 +73,14 @@ def load_prices(paths, start_row=1307, end_row=6244):
         if s.index.has_duplicates:
             raise ValueError(f"{path}: duplicate dates")
         series.append(s)
-    # Keep missing prices through differencing to avoid invented multi-day returns.
-    prices = pd.concat(series, axis=1).sort_index()
+    if alignment == "rows":
+        if len({len(s) for s in series}) != 1:
+            raise ValueError("MATLAB row alignment requires equal-length price series")
+        # The assignment combines observations by row, using asset 1's dates.
+        prices = pd.DataFrame({s.name: s.to_numpy() for s in series}, index=series[0].index)
+    else:
+        # Keep missing prices through differencing to avoid invented multi-day returns.
+        prices = pd.concat(series, axis=1, sort=True).sort_index()
     returns = (100*np.log(prices).diff()).dropna()
     if len(returns) < 30:
         raise ValueError("Need at least 30 aligned returns; check row range")
@@ -117,6 +144,7 @@ def dm_test(difference):
     lrv = np.mean(centered**2, axis=0)
     for lag in range(1, q):
         lrv += 2*(1-lag/q)*np.sum(centered[lag:]*centered[:-lag], axis=0)/n
+    lrv *= n/(n-1)  # MATLAB var() uses the sample denominator.
     statistic = np.divide(d.mean(axis=0), np.sqrt(np.maximum(lrv, 0)/n),
                           out=np.full_like(lrv, np.nan), where=lrv > 0)
     return statistic, 2*stats.norm.sf(abs(statistic))
@@ -142,11 +170,11 @@ def rolling_forecasts(r, window=3500, refit=22, probability=.05):
                 fit = fit_model(r[block:block+window, asset], kind, distribution, mean=mean)
                 for offset in range(block, min(block+refit, n)):
                     # Refilter each moving window with parameters fixed until next refit.
-                    model = arch_model(r[offset:offset+window, asset],
-                        mean="Constant" if mean else "Zero", vol="EGARCH" if kind == "EGARCH" else "GARCH",
-                        p=1, o=int(kind in ("GJR", "EGARCH")), q=1, dist=distribution, rescale=False)
+                    model = make_model(r[offset:offset+window, asset], kind, distribution, mean=mean)
                     filtered = model.fix(fit.params)
                     h = float(filtered.forecast(horizon=1, reindex=False).variance.iloc[-1, 0])
+                    if not np.isfinite(h) or h <= 0:
+                        raise RuntimeError(f"Invalid variance forecast for {name}, asset {asset}, offset {offset}; optimizer convergence flag {fit.convergence_flag}")
                     mu = float(fit.params.get("mu", 0))
                     quantile = stats.norm.ppf(probability)
                     if distribution == "t":
@@ -185,11 +213,11 @@ def save_plot(output, name):
 def run(args):
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
-    prices, returns = load_prices(args.csv, args.start_row, args.end_row)
+    prices, returns = load_prices(args.csv, args.start_row, args.end_row, args.alignment)
     r = returns.iloc[:, 0].to_numpy()
     summary = {"assets": list(returns.columns), "observations": len(returns),
-               "moments": {"mean": returns.mean().to_numpy(), "variance": returns.var(ddof=0).to_numpy(),
-                           "skewness": stats.skew(returns, axis=0), "kurtosis": stats.kurtosis(returns, axis=0, fisher=False)},
+               "alignment": args.alignment,
+               "moments": matlab_moments(returns.to_numpy()),
                "jarque_bera": list(stats.jarque_bera(r))}
     prices.plot(title="Prices"); save_plot(output, "prices")
     returns.plot(title="Percentage log returns"); save_plot(output, "returns")
@@ -239,8 +267,8 @@ def run(args):
     variances = np.column_stack([f.conditional_volatility**2 for f in fits])
     standardized = matrix/np.sqrt(variances)
     qbar = np.cov(standardized, rowvar=False, bias=True)
-    dcc = optimize.minimize(lambda psi: fDCC_LogLikelihood(standardized, qbar, psi)[0],
-                            [np.log(.06/.94), np.log(.94/.06)], method="BFGS",
+    dcc = optimize.minimize(lambda psi: dcc_objective_gradient(standardized, qbar, psi),
+                            [np.log(.06/.94), np.log(.94/.06)], method="BFGS", jac=True,
                             options={"maxiter": 1000, "gtol": 1e-4})
     if not dcc.success:
         warnings.warn(f"DCC optimizer: {dcc.message}")
@@ -297,6 +325,8 @@ if __name__ == "__main__":
     parser.add_argument("--csv", nargs=3, required=True, help="Three asset CSVs, first asset used for univariate analysis")
     parser.add_argument("--start-row", type=int, default=1307, help="First physical CSV line, including header; 0 uses all rows")
     parser.add_argument("--end-row", type=int, default=6244)
+    parser.add_argument("--alignment", choices=("rows", "dates"), default="rows",
+                        help="rows reproduces MATLAB assignment; dates pairs same-date observations")
     parser.add_argument("--window", type=int, default=3500)
     parser.add_argument("--refit", type=int, default=22)
     parser.add_argument("--max-arch", type=int, default=20)

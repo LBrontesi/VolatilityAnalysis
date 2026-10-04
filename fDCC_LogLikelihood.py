@@ -34,3 +34,35 @@ def fDCC_LogLikelihood(my_star, mQbar, vPsi):
     except np.linalg.LinAlgError:
         total = np.inf
     return float(total), a, b
+
+
+def dcc_objective_gradient(residuals, qbar, psi):
+    """DCC objective and analytic gradient for stable BFGS estimation."""
+    z = np.asarray(residuals, dtype=float)
+    qbar = np.asarray(qbar, dtype=float)
+    a, fraction = expit(psi)
+    b = (1-a)*fraction
+    da = np.array([a*(1-a), 0.])
+    db = np.array([-a*b, b*(1-fraction)])
+    q = qbar.copy()
+    dq = np.zeros((2, *q.shape))
+    total, gradient = 0., np.zeros(2)
+    for i, observation in enumerate(z):
+        if i:
+            outer = np.outer(z[i-1], z[i-1])
+            dq = (-(da+db)[:, None, None]*qbar + da[:, None, None]*outer
+                  + db[:, None, None]*q + b*dq)
+            q = (1-a-b)*qbar + a*outer + b*q
+        diagonal = np.diag(q)
+        scale = np.sqrt(np.outer(diagonal, diagonal))
+        p = q/scale
+        dp_diagonal = np.diagonal(dq, axis1=1, axis2=2)/diagonal
+        dp = dq/scale - .5*p*(dp_diagonal[:, :, None]+dp_diagonal[:, None, :])
+        sign, logdet = np.linalg.slogdet(p)
+        if sign <= 0:
+            return np.inf, np.zeros(2)
+        inverse = np.linalg.solve(p, np.eye(p.shape[0]))
+        solved = inverse@observation
+        total += .5*(logdet+observation@solved)
+        gradient += .5*np.einsum('ij,kji->k', inverse-np.outer(solved, solved), dp)
+    return float(total), gradient

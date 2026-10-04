@@ -38,7 +38,8 @@ This project applies financial econometric models to analyze volatility dynamics
 
 The `python-conversion` branch replaces both MATLAB files with Python. The
 original MATLAB sources remain available in Git history. The assignment PDF is
-retained as a reference; its reported numbers have not been regenerated.
+retained as a reference. Its empty four-byte placeholder has been replaced with
+the original readable report found alongside the local assignment.
 
 ```sh
 python3 -m venv .venv
@@ -48,12 +49,24 @@ python code_assignment.py --csv BMW.csv INTESA.csv ENI.csv
 pytest -q
 ```
 
-The original repository does **not** include the CSVs or `EuroStoxx50.xlsx`.
-Supply three CSVs with `Date` (or `Dates`) and `Close` columns; otherwise the
+The required original inputs are bundled in `data/`: `BMW.DE.csv`,
+`ISP.MI.csv`, `ENI.MI.csv`, and `EuroStoxx50.xlsx`. Run the full analysis with:
+
+```sh
+python code_assignment.py --csv data/BMW.DE.csv data/ISP.MI.csv data/ENI.MI.csv
+python validation/compare_report.py results/summary.json
+```
+
+Alternative CSVs can use `Date` (or `Dates`) and `Close` columns; otherwise the
 first and fifth columns are used. The first asset is the univariate subject.
 Explicit file selection replaces MATLAB's random spreadsheet selection, since
-NumPy and MATLAB do not sample identically from the same seed. Dates are sorted
-and aligned, with missing prices excluded without bridging missing observations.
+NumPy and MATLAB do not sample identically from the same seed. The CLI defaults
+to `--alignment rows`, matching MATLAB's positional pairing: 4,937 returns and
+1,437 forecasts. Because the exchange calendars differ, row pairing can combine
+different dates. `--alignment dates` uses same-date observations and retains
+4,895 returns. Dates are sorted, with missing prices excluded without bridging
+missing observations. The Python `load_prices()` API defaults to date alignment;
+pass `alignment="rows"` to reproduce the assignment.
 Defaults select physical CSV lines 1307–6244 (header counted), matching the
 assignment's intended range. Use `--start-row 0` for all rows.
 
@@ -92,10 +105,16 @@ backtests (violations, quantile loss, Diebold–Mariano tests, and MSFE).
   weekends but do not incorporate exchange-specific holidays.
 - LOWESS replaces MATLAB LOESS. Distribution diagnostics use fitted Student-t
   degrees of freedom with variance normalization instead of a fixed value 6.
-  Optimizer initialization and model backcasts differ between toolkits, so
-  this is a functional port, not a promise of bit-for-bit MATLAB parity.
+  `matlab_initialization.py` reproduces MATLAB's average-square presample
+  variance, positive GARCH/GJR presample shocks, and zero EGARCH presample
+  shocks. Solver tolerances, constraints, and copula methods still differ, so
+  not every estimate is numerically identical. DCC uses an analytic gradient
+  to avoid finite-difference precision-loss termination.
 
 Validation uses independent DCC and EWMA recursions, missing-data alignment,
 rolling forecasts without future-data leakage, copula parameter bounds, and a
-synthetic end-to-end run. Original-data numerical parity requires the missing
-input files and MATLAB reference outputs.
+synthetic end-to-end run. The full bundled-data run is compared with the report in
+`validation/MATLAB_COMPARISON.md`; every transcribed numerical comparison is in
+`validation/comparison.csv`. The reference JSON preserves the printed report
+values, including apparent typos. MATLAB was not available locally, so this
+checks the saved report rather than a fresh MATLAB execution.

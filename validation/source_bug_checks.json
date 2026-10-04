@@ -1,0 +1,55 @@
+{
+  "method": "Python emulation of source expressions; not a fresh MATLAB run",
+  "dcc_reused_first_model": {
+    "a": 0.0159831481695431,
+    "b": 0.9781978260438894,
+    "converged": true
+  },
+  "source_tail_expression": {
+    "BMW.DE / ISP.MI": 0.0013913202456182084,
+    "BMW.DE / ENI.MI": 0.010373832758819809,
+    "ISP.MI / ENI.MI": 0.13632185112433448
+  },
+  "source_crisis_indexing": {
+    "covid": {
+      "observations": 148,
+      "wrong_forecast_start": "2018-10-04",
+      "wrong_forecast_end": "2019-05-09",
+      "violations": [
+        9,
+        7,
+        9
+      ],
+      "total_loss": [
+        24.95230857609733,
+        26.600804768786258,
+        19.407773711641656
+      ],
+      "mixed_msfe": [
+        923.9817780767069,
+        1347.3479232138347,
+        3514.83841709673
+      ]
+    },
+    "war": {
+      "observations": 151,
+      "wrong_forecast_start": "2018-10-04",
+      "wrong_forecast_end": "2019-05-14",
+      "violations": [
+        9,
+        7,
+        9
+      ],
+      "total_loss": [
+        25.20641684696956,
+        26.84906100241086,
+        19.771024259569536
+      ],
+      "mixed_msfe": [
+        115.90100950253694,
+        287.4446336228058,
+        70.77126780603716
+      ]
+    }
+  }
+}

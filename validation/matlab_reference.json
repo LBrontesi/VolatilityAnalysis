@@ -1,0 +1,38 @@
+{
+  "source": "Brontesi_Assignment.pdf",
+  "asset_order": ["BMW.DE", "ISP.MI", "ENI.MI"],
+  "observations": 4937,
+  "forecast_observations": 1437,
+  "moments": {"variance": [3.7183, 5.8282, 3.0879], "kurtosis": [8.6460, 12.6799, 20.0530], "bmw_skewness": -0.0920},
+  "aic": {"ARCH": 19335.8591, "GARCH": 19260.1805},
+  "garch_parameters_as_printed": {"omega": 0.208656, "alpha[1]": 0.047917, "beta[1]": 0.94425},
+  "dcc": {"a": 0.0160, "b": 0.9782},
+  "copulas": {
+    "BMW.DE / ISP.MI": {"rho": 0.0949, "tail_dependence": 0.0014},
+    "BMW.DE / ENI.MI": {"rho": 0.0919, "tail_dependence": 0.0104},
+    "ISP.MI / ENI.MI": {"rho": 0.5618, "tail_dependence": 0.1363}
+  },
+  "backtests": {
+    "full": {
+      "GARCH_normal": {"violations": [73,62,79], "total_loss": [320.7830,335.9951,321.9621], "dm_pvalue": [0.1058,0.4550,0.5333], "msfe": [113.6880,185.1260,368.8538]},
+      "EGARCH_normal": {"violations": [70,70,77], "total_loss": [317.2043,331.6451,316.5726], "dm_pvalue": [0.0383,0.2350,0.0596], "msfe": [113.1300,180.5834,365.3687]},
+      "GARCH_t": {"violations": [77,68,86], "total_loss": [321.1650,335.4972,320.8960], "dm_pvalue": [0.2062,0.1547,0.3042], "msfe": [114.1721,185.7372,368.5128]},
+      "GJR_t": {"violations": [75,71,83], "total_loss": [320.4253,335.8393,316.6078], "dm_pvalue": [0.1520,0.6693,0.2028], "msfe": [110.5471,191.8431,372.1226]},
+      "RiskMetrics": {"violations": [80,74,84], "total_loss": [323.6213,338.0457,323.3675], "msfe": [114.3819,186.6264,375.3184]}
+    },
+    "covid": {
+      "GARCH_normal": {"violations": [9,7,8], "total_loss": [24.3045,26.4276,18.9817], "dm_pvalue": [0.6757,0.9123,0.7699], "msfe": [921.3330,1347.3594,3509.9258]},
+      "EGARCH_normal": {"violations": [8,8,7], "total_loss": [24.7778,27.4663,19.1074], "dm_pvalue": [0.7961,0.6787,0.9004], "msfe": [918.8062,1333.2859,3498.5249]},
+      "GARCH_t": {"violations": [9,7,9], "total_loss": [24.4332,26.2375,19.0098], "dm_pvalue": [0.5963,0.5797,0.7125], "msfe": [921.3633,1345.3126,3509.3191]},
+      "GJR_t": {"violations": [8,8,8], "total_loss": [24.7782,27.3699,18.9293], "dm_pvalue": [0.9211,0.6856,0.7752], "msfe": [917.5645,1343.4766,3506.7689]},
+      "RiskMetrics": {"violations": [9,7,9], "total_loss": [24.9523,26.6008,19.4078], "msfe": [923.9818,1347.3479,3514.8384]}
+    },
+    "war": {
+      "GARCH_normal": {"violations": [9,7,8], "total_loss": [24.5588,26.7333,19.3750], "dm_pvalue": [0.6725,0.9392,0.7843], "msfe": [113.6420,288.6934,69.4990]},
+      "EGARCH_normal": {"violations": [8,8,7], "total_loss": [24.7778,27.8116,19.5542], "dm_pvalue": [0.8051,0.6331,0.9277], "msfe": [113.3289,280.4964,69.4192]},
+      "GARCH_t": {"violations": [9,7,9], "total_loss": [24.6766,26.5090,19.3965], "dm_pvalue": [0.5865,0.5876,0.7272], "msfe": [113.6878,286.0778,69.4296]},
+      "GJR_t": {"violations": [8,8,8], "total_loss": [25.0627,27.6916,19.3601], "dm_pvalue": [0.9334,0.6480,0.8064], "msfe": [112.3042,285.4648,69.8818]},
+      "RiskMetrics": {"violations": [9,7,9], "total_loss": [25.2064,26.8491,19.7710], "msfe": [115.9010,287.4446,70.7713]}
+    }
+  }
+}
