@@ -22,8 +22,24 @@ from matlab_initialization import AssignmentGARCH, AssignmentEGARCH
 
 
 def make_model(r, kind="GARCH", distribution="normal", p=1, mean=False):
+    if kind == "EGARCH":
+        vol = "EGARCH"
+    elif kind == "FIGARCH":
+        vol = "FIGARCH"
+    else:
+        vol = "GARCH"
+    if kind == "FIGARCH":
+        return arch_model(
+            np.asarray(r),
+            mean="Constant" if mean else "Zero",
+            vol="FIGARCH",
+            p=p,
+            q=1,
+            dist=distribution,
+            rescale=False
+        )
     model = arch_model(np.asarray(r), mean="Constant" if mean else "Zero",
-                       vol="EGARCH" if kind == "EGARCH" else "GARCH",
+                       vol=vol if kind == "EGARCH" else "GARCH",
                        p=p, o=int(kind in ("GJR", "EGARCH")),
                        q=0 if kind == "ARCH" else 1, dist=distribution, rescale=False)
     process = AssignmentEGARCH if kind == "EGARCH" else AssignmentGARCH
@@ -154,7 +170,8 @@ ROLLING_MODELS = {"GARCH_normal": ("GARCH", "normal", True),
                   "EGARCH_normal": ("EGARCH", "normal", True),
                   "GARCH_t": ("GARCH", "t", True),
                   "GJR_t": ("GJR", "t", True),
-                  "GJR_normal": ("GJR", "normal", False)}
+                  "GJR_normal": ("GJR", "normal", False),
+                  "FIGARCH": ("FIGARCH", "normal", False)}
 
 
 def rolling_forecasts(r, window=3500, refit=22, probability=.05):
